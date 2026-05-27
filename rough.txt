@@ -1,0 +1,7 @@
+commands
+for backend:
+
+
+for frontend:
+npm create vite@latest frontend
+source ~/.bashrc
