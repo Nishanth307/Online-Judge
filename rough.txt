@@ -1,7 +1,12 @@
 commands
 for backend:
 
+node server.js - to start backend application
+
 
 for frontend:
 npm create vite@latest frontend
 source ~/.bashrc
+
+installed packages for backend:
+npm install express mongoose bcryptjs jsonwebtoken dotenv
