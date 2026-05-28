@@ -403,13 +403,31 @@ Enables easy backend scaling.
 
 ## 14. Technology Stack
 
-| Layer          | Technology        |
-| -------------- | ----------------- |
-| Frontend       | React.js          |
-| Backend        | Node.js + Express |
-| Database       | PostgreSQL        |
-| Cache          | Redis             |
-| Queue          | Apache Kafka      |
-| File Storage   | MinIO             |
-| Sandbox        | Docker            |
-| Authentication | JWT               |
+| Requirement            | Target  |
+| ---------------------- | ------- |
+| Concurrent Submissions | 1000+   |
+| Evaluation Latency     | < 5s    |
+| API Response Time      | < 200ms |
+| Availability           | 99.9%   |
+
+---
+
+# Project Goals
+
+* Scalable architecture
+* Secure execution environment
+* Fast verdict generation
+* High availability
+* Contest-ready infrastructure
+
+---
+
+# License
+
+This project is for educational and learning purposes.
+
+---
+
+# Author
+
+Platform Engineering Team
