@@ -1,644 +1,415 @@
-# Online Judge System
+# Online Judge System — High Level Design (HLD)
 
-A scalable competitive programming and automated code evaluation platform inspired by platforms like LeetCode, Codeforces, and CodeChef.
+## 1. Overview
 
-## Overview
+### Purpose
 
-The Online Judge System allows users to:
+The Online Judge System is a scalable competitive programming platform where users can solve coding problems, submit solutions, and receive automated verdicts after execution against hidden test cases.
 
-* Solve programming problems
-* Submit code in multiple languages
-* Receive automated verdicts
-* Participate in contests
-* View leaderboards and submission history
+The system is designed to support:
 
-The platform is built using the MERN stack with PostgreSQL, MinIO object storage, Docker-based sandbox execution, and Kafka-driven asynchronous evaluation.
+* High concurrent submissions
+* Secure sandboxed code execution
+* Multi-language compilation and execution
+* Contest leaderboards
+* Scalable asynchronous evaluation
 
 ---
 
-# High Level Architecture Diagram
+## 2. High Level Architecture
 
-```text id="n4x8vt"
-                                 ┌────────────────────┐
-                                 │    React Client    │
-                                 │  Web / Frontend    │
-                                 └─────────┬──────────┘
-                                           │
-                                  HTTPS / REST APIs
-                                           │
-                                           ▼
-                          ┌────────────────────────────────┐
-                          │        Express.js API          │
-                          │ Authentication + Controllers   │
-                          └──────────────┬─────────────────┘
-                                         │
-          ┌──────────────────────────────┼──────────────────────────────┐
-          │                              │                              │
-          ▼                              ▼                              ▼
+```text
+                                ┌───────────────────┐
+                                │     Frontend      │
+                                │   React Client    │
+                                └─────────┬─────────┘
+                                          │
+                                          ▼
+                                ┌───────────────────┐
+                                │  Backend Service  │
+                                │   Express.js API  │
+                                └─────────┬─────────┘
+                                          │
+               ┌──────────────────────────┼──────────────────────────┐
+               │                          │                          │
+               ▼                          ▼                          ▼
 
-┌──────────────────┐        ┌────────────────────┐        ┌──────────────────┐
-│   PostgreSQL     │        │       Redis        │        │      MinIO       │
-│ Relational DB    │        │  Cache Layer       │        │ Object Storage   │
-└────────┬─────────┘        └─────────┬──────────┘        └────────┬─────────┘
-         │                            │                             │
-         │                            │                             │
-         │                    Leaderboard Cache              Test Cases
-         │                    Session Storage                Submission Files
-         │                    Recent Submissions             Problem Assets
-         │                                                  Execution Logs
-         │
-         ▼
-┌──────────────────────────────┐
-│        Apache Kafka          │
-│      submission-jobs         │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│      Evaluation Workers      │
-│  Kafka Consumers (Node.js)   │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│      Docker Sandboxes        │
-│ Isolated Secure Containers   │
-│  C++ / Java / Python / Go    │
-└──────────────────────────────┘
+      ┌────────────────┐       ┌────────────────┐       ┌────────────────┐
+      │   PostgreSQL   │       │     Redis      │       │     MinIO      │
+      │ Relational DB  │       │ Cache Layer    │       │ File Storage   │
+      └────────────────┘       └────────────────┘       └────────────────┘
+                                                              │
+                                                              ▼
+                                                   Store Source Code
+                                                   Store Test Cases
+                                                   Store Logs
+
+                                          │
+                                          ▼
+                                ┌───────────────────┐
+                                │   Apache Kafka    │
+                                │ submission-jobs   │
+                                └─────────┬─────────┘
+                                          │
+                                          ▼
+                                ┌───────────────────┐
+                                │ Evaluation Worker │
+                                │ Kafka Consumers   │
+                                └─────────┬─────────┘
+                                          │
+                                          ▼
+                                ┌───────────────────┐
+                                │ Docker Sandbox    │
+                                │ Secure Execution  │
+                                └───────────────────┘
 ```
 
 ---
 
-# Submission Flow Diagram
+## 3. Core Components
 
-```text id="t2v6rm"
-User
- │
- │ Submit Code
- ▼
-React Frontend
- │
- ▼
-Express.js API
- │
- ├── Save metadata in PostgreSQL
- │
- ├── Upload source file to MinIO
- │
- └── Publish event to Kafka
-                │
-                ▼
-        Kafka Queue
-                │
-                ▼
-      Evaluation Worker
-                │
-                ├── Fetch code from MinIO
-                ├── Fetch test cases from MinIO
-                ├── Start Docker container
-                ├── Compile and execute
-                └── Generate verdict
-                           │
-                           ▼
-              PostgreSQL updated
-                           │
-                           ▼
-               Logs uploaded to MinIO
-                           │
-                           ▼
-                 Client polls result
-```
+### Frontend
 
----
+Responsible for:
 
-# Tech Stack
+* User registration/login
+* Problem listing
+* Code editor
+* Submission history
+* Leaderboard
+* Contest participation
 
-## Frontend
+Tech:
 
 * React.js
 * Monaco Editor
-* JWT Authentication
 
-## Backend
+---
+
+### Backend Service
+
+Handles:
+
+* Authentication
+* API routing
+* Submission processing
+* JWT validation
+* Problem APIs
+* Contest APIs
+
+Tech:
 
 * Node.js
 * Express.js
 
-## Database
+---
 
-* PostgreSQL
+### PostgreSQL
 
-## Object Storage
+Stores relational data:
 
-* MinIO (S3-compatible storage)
-
-## Messaging Queue
-
-* Apache Kafka
-
-## Cache
-
-* Redis
-
-## Sandbox & Execution
-
-* Docker Containers
+* Users
+* Problems
+* Contests
+* Submissions
+* Verdicts
+* Leaderboards
 
 ---
 
-# Features
+### Redis
 
-## User Management
+Used for caching:
 
-* User registration and login
-* JWT-based authentication
-* User profile management
-* Submission history
-
-## Problem Management
-
-* Browse coding problems
-* Difficulty levels
-* Practice and contest problems
-* Markdown-based statements
-
-## Code Submission
-
-* Multi-language support:
-
-  * C++
-  * Java
-  * Python
-  * Go
-* File upload support
-* Automated evaluation
-
-## Verdict System
-
-* Accepted (AC)
-* Wrong Answer (WA)
-* Time Limit Exceeded (TLE)
-* Memory Limit Exceeded (MLE)
-* Runtime Error (RE)
-* Compilation Error (CE)
-
-## Leaderboard
-
-* Contest rankings
-* Score tracking
+* User sessions
+* Leaderboards
+* Frequently accessed problems
 * Recent submissions
 
-## Secure Sandbox Execution
+---
 
-* Docker-based isolation
-* CPU and memory limits
+### MinIO
+
+Object storage service used for:
+
+* Source code files
+* Test case files
+* Execution logs
+* Problem assets
+
+Buckets:
+
+* submissions
+* testcases
+* logs
+* problem-assets
+
+---
+
+### Kafka
+
+Acts as asynchronous message queue.
+
+Topic:
+
+* submission-jobs
+
+Benefits:
+
+* Handles traffic spikes
+* Decouples API and evaluation
+* Improves scalability
+
+---
+
+### Evaluation Worker
+
+Consumes Kafka jobs and:
+
+* Downloads source code
+* Downloads test cases
+* Starts Docker containers
+* Executes code
+* Generates verdicts
+
+---
+
+### Docker Sandbox
+
+Secure execution environment.
+
+Features:
+
+* CPU limits
+* Memory limits
 * Read-only filesystem
 * No network access
+* Non-root execution
 
 ---
 
-# Why PostgreSQL?
+## 4. Authentication Flow
 
-PostgreSQL is used for structured relational data because it provides:
-
-* Strong ACID compliance
-* Reliable transactions
-* Efficient joins
-* Better consistency for contests and leaderboards
-* Advanced indexing support
-
----
-
-# Why MinIO?
-
-MinIO is used for scalable object/file storage.
-
-The Online Judge System stores:
-
-* Problem attachments
-* Input/output test case files
-* Uploaded source code files
-* Execution logs
-* User profile images
-
-MinIO provides:
-
-* S3-compatible APIs
-* High-performance storage
-* Bucket-based organization
-* Easy Docker deployment
-* Presigned URL support
-
----
-
-# Suggested MinIO Buckets
-
-| Bucket         | Purpose                      |
-| -------------- | ---------------------------- |
-| problem-assets | Problem images and PDFs      |
-| testcases      | Input/output test case files |
-| submissions    | Uploaded source code         |
-| logs           | Execution logs               |
-| profiles       | User profile pictures        |
-
----
-
-# Submission Workflow
-
-1. User submits code
-2. API validates request
-3. Submission metadata stored in PostgreSQL
-4. Source code uploaded to MinIO
-5. Job pushed to Kafka
-6. Worker consumes submission
-7. Docker container created
-8. Test cases fetched from MinIO
-9. Code compiled and executed
-10. Output compared with expected output
-11. Verdict updated in PostgreSQL
-12. Logs uploaded to MinIO
-13. Client polls and displays result
-
----
-
-# API Endpoints
-
-## Authentication
-
-### Register
-
-```http id="r5k2tx"
-POST /auth/register
+```text
+User
+ │
+ ▼
+Register/Login
+ │
+ ▼
+Backend Service
+ │
+ ├── Validate Credentials
+ ├── Store User in PostgreSQL
+ └── Generate JWT Token
+            │
+            ▼
+      Return JWT
+            │
+            ▼
+ Store Token in Client
 ```
 
-### Login
+JWT contains:
 
-```http id="b3n8vf"
-POST /auth/login
+* userId
+* expiry time
+
+---
+
+## 5. Submission Flow
+
+```text
+User
+ │
+ ▼
+Select Problem
+ │
+ ▼
+Write Code
+ │
+ ▼
+Submit Solution
+ │
+ ▼
+Backend API
+ │
+ ├── Store metadata in PostgreSQL
+ ├── Upload source file to MinIO
+ └── Push job to Kafka
+                │
+                ▼
+         Evaluation Worker
+                │
+                ├── Fetch source file
+                ├── Fetch test cases
+                ├── Start Docker container
+                ├── Compile code
+                ├── Execute code
+                └── Generate verdict
+                           │
+                           ▼
+              Update PostgreSQL
+                           │
+                           ▼
+                Upload logs to MinIO
+                           │
+                           ▼
+                    Return Result
 ```
 
 ---
 
-## Problems
+## 6. Database Design
 
-### Get All Problems
+### users
 
-```http id="q2d4lm"
-GET /problems
-```
-
-### Get Problem Details
-
-```http id="h7x1pc"
-GET /problems/:id
-```
+| Column     | Type      |
+| ---------- | --------- |
+| id         | UUID      |
+| username   | VARCHAR   |
+| email      | VARCHAR   |
+| password   | TEXT      |
+| created_at | TIMESTAMP |
 
 ---
 
-## Submissions
+### problems
 
-### Submit Code
-
-```http id="w1u9ra"
-POST /submissions
-```
-
-### Get Submission Result
-
-```http id="m8s2yd"
-GET /submissions/:id
-```
-
-### Recent Submissions
-
-```http id="f6v0jk"
-GET /submissions/recent
-```
+| Column          | Type    |
+| --------------- | ------- |
+| id              | UUID    |
+| title           | VARCHAR |
+| statement       | TEXT    |
+| difficulty      | VARCHAR |
+| time_limit_ms   | INTEGER |
+| memory_limit_mb | INTEGER |
 
 ---
 
-## User
+### submissions
 
-### Current User Profile
-
-```http id="g2k8oq"
-GET /users/me
-```
-
----
-
-## Leaderboard
-
-### Contest Leaderboard
-
-```http id="n1p4zt"
-GET /leaderboard/:contestId
-```
+| Column         | Type      |
+| -------------- | --------- |
+| id             | UUID      |
+| user_id        | UUID      |
+| problem_id     | UUID      |
+| language       | VARCHAR   |
+| verdict        | VARCHAR   |
+| execution_ms   | INTEGER   |
+| memory_used_mb | INTEGER   |
+| created_at     | TIMESTAMP |
 
 ---
 
-# Database Design
+## 7. MinIO Storage Design
 
-## users
-
-| Column     | Type      | Description            |
-| ---------- | --------- | ---------------------- |
-| id         | UUID      | Primary Key            |
-| username   | VARCHAR   | Unique username        |
-| email      | VARCHAR   | Unique email           |
-| password   | TEXT      | bcrypt hashed password |
-| full_name  | VARCHAR   | User full name         |
-| dob        | DATE      | Date of birth          |
-| created_at | TIMESTAMP | Account creation time  |
+| Bucket         | Purpose            |
+| -------------- | ------------------ |
+| submissions    | User source code   |
+| testcases      | Input/output files |
+| logs           | Execution logs     |
+| problem-assets | Images/PDFs        |
 
 ---
 
-## problems
+## 8. Docker Sandbox Constraints
 
-| Column          | Type      | Description                |
-| --------------- | --------- | -------------------------- |
-| id              | UUID      | Primary Key                |
-| title           | VARCHAR   | Problem title              |
-| code            | VARCHAR   | Unique problem code        |
-| statement       | TEXT      | Markdown problem statement |
-| difficulty      | VARCHAR   | Easy / Medium / Hard       |
-| time_limit_ms   | INTEGER   | Execution limit            |
-| memory_limit_mb | INTEGER   | Memory limit               |
-| asset_url       | TEXT      | MinIO object URL           |
-| created_at      | TIMESTAMP | Creation timestamp         |
+| Constraint   | Value     |
+| ------------ | --------- |
+| CPU Limit    | 1 vCPU    |
+| Memory Limit | 256 MB    |
+| Network      | Disabled  |
+| Filesystem   | Read-only |
+| User         | Non-root  |
 
 ---
 
-## test_cases
+## 9. Verdict Types
 
-| Column          | Type    | Description            |
-| --------------- | ------- | ---------------------- |
-| id              | UUID    | Primary Key            |
-| problem_id      | UUID    | FK → problems.id       |
-| input_file_url  | TEXT    | MinIO input file       |
-| output_file_url | TEXT    | MinIO output file      |
-| is_hidden       | BOOLEAN | Hidden during contests |
-
----
-
-## submissions
-
-| Column         | Type      | Description         |
-| -------------- | --------- | ------------------- |
-| id             | UUID      | Primary Key         |
-| user_id        | UUID      | FK → users.id       |
-| problem_id     | UUID      | FK → problems.id    |
-| language       | VARCHAR   | cpp/java/python/go  |
-| code_file_url  | TEXT      | MinIO source file   |
-| verdict        | VARCHAR   | AC/WA/TLE/MLE/RE/CE |
-| execution_ms   | INTEGER   | Execution time      |
-| memory_used_mb | INTEGER   | Memory usage        |
-| logs_url       | TEXT      | MinIO execution log |
-| submitted_at   | TIMESTAMP | Submission time     |
+| Verdict | Description           |
+| ------- | --------------------- |
+| AC      | Accepted              |
+| WA      | Wrong Answer          |
+| TLE     | Time Limit Exceeded   |
+| MLE     | Memory Limit Exceeded |
+| RE      | Runtime Error         |
+| CE      | Compilation Error     |
 
 ---
 
-# Docker Sandbox Constraints
+## 10. Scalability
 
-| Constraint      | Value     |
-| --------------- | --------- |
-| CPU Limit       | 1 vCPU    |
-| Memory Limit    | 256 MB    |
-| Network Access  | Disabled  |
-| Filesystem      | Read-only |
-| User Privileges | Non-root  |
-| PID Limit       | 50        |
+### Horizontal Scaling
 
----
+Evaluation workers can scale independently.
 
-# Scalability Features
+### Kafka Queue
 
-* Kafka-based asynchronous processing
-* Horizontal worker scaling
-* Redis caching
-* Stateless REST APIs
-* Docker container isolation
-* S3-compatible object storage using MinIO
+Buffers high submission traffic during contests.
+
+### Redis Cache
+
+Reduces database load.
+
+### Stateless APIs
+
+Enables easy backend scaling.
 
 ---
 
-# Security
+## 11. Security
 
-* JWT Authentication
-* Sandboxed execution
-* No internet access inside containers
-* Read-only container filesystem
-* Resource isolation using cgroups
-* Isolated object storage buckets
-* Presigned URLs for secure file access
+### Authentication
 
----
+* JWT-based authentication
 
-# Running the Project
+### Sandbox Isolation
 
-## Clone Repository
+* Docker containers per submission
 
-```bash id="y4r9tw"
-git clone <repository-url>
-cd online-judge-system
-```
+### File Security
+
+* Files stored in MinIO
+* Presigned URLs
+
+### Network Isolation
+
+* No outbound internet inside containers
 
 ---
 
-## Install Dependencies
+## 12. Non-Functional Requirements
 
-### Backend
-
-```bash id="z8p1lv"
-cd backend
-npm install
-```
-
-### Frontend
-
-```bash id="j5x3qe"
-cd frontend
-npm install
-```
+| Requirement        | Target  |
+| ------------------ | ------- |
+| Concurrent Users   | 1000+   |
+| Evaluation Latency | < 5s    |
+| API Response Time  | < 200ms |
+| Availability       | 99.9%   |
 
 ---
 
-# Start Infrastructure
-
-## PostgreSQL
-
-```bash id="v2n6am"
-docker run -d \
-  --name postgres \
-  -e POSTGRES_USER=admin \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=online_judge \
-  -p 5432:5432 \
-  postgres
-```
-
----
-
-## MinIO
-
-```bash id="q7f1kc"
-docker run -d \
-  --name minio \
-  -p 9000:9000 \
-  -p 9001:9001 \
-  -e MINIO_ROOT_USER=admin \
-  -e MINIO_ROOT_PASSWORD=password123 \
-  -v ~/minio-data:/data \
-  quay.io/minio/minio server /data --console-address ":9001"
-```
-
-### MinIO Console
-
-```text id="u4k2dt"
-http://localhost:9001
-```
-
-### MinIO API Endpoint
-
-```text id="r9w5lx"
-http://localhost:9000
-```
-
----
-
-## Redis
-
-```bash id="x3m8qp"
-docker run -d -p 6379:6379 redis
-```
-
----
-
-## Kafka
-
-```bash id="t7j4ns"
-docker compose up kafka
-```
-
----
-
-# Start Backend
-
-```bash id="k2v5ba"
-npm run dev
-```
-
----
-
-# Start Frontend
-
-```bash id="m7c1yo"
-npm start
-```
-
----
-
-# Example Environment Variables
-
-```env id="p6s9wr"
-PORT=5000
-
-DATABASE_URL=postgresql://admin:password@localhost:5432/online_judge
-
-JWT_SECRET=your_jwt_secret
-
-KAFKA_BROKER=localhost:9092
-
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-MINIO_ENDPOINT=localhost
-MINIO_PORT=9000
-MINIO_ACCESS_KEY=admin
-MINIO_SECRET_KEY=password123
-MINIO_BUCKET=submissions
-```
-
----
-
-# Example MinIO Integration (Node.js)
-
-## Install Dependency
-
-```bash id="w8n3kd"
-npm install minio
-```
-
----
-
-## MinIO Client
-
-```javascript id="h5p2za"
-const Minio = require('minio');
-
-const minioClient = new Minio.Client({
-  endPoint: 'localhost',
-  port: 9000,
-  useSSL: false,
-  accessKey: 'admin',
-  secretKey: 'password123'
-});
-
-module.exports = minioClient;
-```
-
----
-
-## Upload File Example
-
-```javascript id="f1r6mc"
-await minioClient.fPutObject(
-  'submissions',
-  'solution.cpp',
-  '/tmp/solution.cpp'
-);
-```
-
----
-
-# Future Enhancements
+## 13. Future Enhancements
 
 * Kubernetes deployment
-* Auto-scaling worker nodes
-* WebSocket-based live verdicts
-* Distributed object storage
-* CDN integration for assets
+* Auto-scaling workers
+* WebSocket live verdicts
+* Plagiarism detection
+* Distributed MinIO storage
 * Multi-region deployment
 
 ---
 
-# Non-Functional Requirements
+## 14. Technology Stack
 
-| Requirement            | Target  |
-| ---------------------- | ------- |
-| Concurrent Submissions | 1000+   |
-| Evaluation Latency     | < 5s    |
-| API Response Time      | < 200ms |
-| Availability           | 99.9%   |
-
----
-
-# Project Goals
-
-* Scalable architecture
-* Secure execution environment
-* Fast verdict generation
-* High availability
-* Contest-ready infrastructure
-
----
-
-# License
-
-This project is for educational and learning purposes.
-
----
-
-# Author
-
-Platform Engineering Team
+| Layer          | Technology        |
+| -------------- | ----------------- |
+| Frontend       | React.js          |
+| Backend        | Node.js + Express |
+| Database       | PostgreSQL        |
+| Cache          | Redis             |
+| Queue          | Apache Kafka      |
+| File Storage   | MinIO             |
+| Sandbox        | Docker            |
+| Authentication | JWT               |
