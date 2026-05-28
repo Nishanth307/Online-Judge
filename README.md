@@ -439,7 +439,7 @@ GET /leaderboard/:contestId
 ## Clone Repository
 
 ```bash id="y4r9tw"
-git clone <repository-url>
+git clone https://github.com/Nishanth307/Online-Judge
 cd online-judge-system
 ```
 
@@ -632,13 +632,3 @@ await minioClient.fPutObject(
 * Contest-ready infrastructure
 
 ---
-
-# License
-
-This project is for educational and learning purposes.
-
----
-
-# Author
-
-Platform Engineering Team
