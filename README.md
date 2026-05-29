@@ -35,8 +35,8 @@ The system is designed to support:
                ▼                          ▼                          ▼
 
       ┌────────────────┐       ┌────────────────┐       ┌────────────────┐
-      │   PostgreSQL   │       │     Redis      │       │     MinIO      │
-      │ Relational DB  │       │ Cache Layer    │       │ File Storage   │
+      │  MongoDB       │       │     Redis      │       │     MinIO      │
+      │  Nosql database│       │     Cache      │       │ File Storage   │
       └────────────────┘       └────────────────┘       └────────────────┘
                                                               │
                                                               ▼
