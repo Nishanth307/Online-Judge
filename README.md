@@ -1,433 +1,336 @@
 # Online Judge System — High Level Design (HLD)
 
+---
+
 ## 1. Overview
 
 ### Purpose
 
-The Online Judge System is a scalable competitive programming platform where users can solve coding problems, submit solutions, and receive automated verdicts after execution against hidden test cases.
+The **Online Judge System** is a scalable competitive programming platform where users can solve coding problems, submit solutions, and receive automated verdicts after execution against hidden test cases.
 
 The system is designed to support:
 
-* High concurrent submissions
-* Secure sandboxed code execution
-* Multi-language compilation and execution
-* Contest leaderboards
-* Scalable asynchronous evaluation
+- High concurrent submissions
+- Secure sandboxed code execution
+- Multi-language compilation and execution
+- Contest leaderboards
+- Scalable asynchronous evaluation
 
 ---
 
-## 2. High Level Architecture
+## 2. High-Level Architecture
 
-```text
-                                ┌───────────────────┐
-                                │     Frontend      │
-                                │   React Client    │
-                                └─────────┬─────────┘
-                                          │
-                                          ▼
-                                ┌───────────────────┐
-                                │  Backend Service  │
-                                │   Express.js API  │
-                                └─────────┬─────────┘
-                                          │
-               ┌──────────────────────────┼──────────────────────────┐
-               │                          │                          │
-               ▼                          ▼                          ▼
+```mermaid
+flowchart TD
+    FE["Frontend\nReact + Monaco Editor"]
+    BE["Backend Service\nNode.js · Express.js"]
+    MDB[("MongoDB\nDocument DB")]
+    RD[("Redis\nCache")]
+    MN[("MinIO\nFile Storage")]
+    KF["Apache Kafka\nsubmission-jobs"]
+    EW["Evaluation Worker\nKafka Consumer"]
+    DS["Docker Sandbox\nSecure Execution"]
 
-      ┌────────────────┐       ┌────────────────┐       ┌────────────────┐
-      │  MongoDB       │       │     Redis      │       │     MinIO      │
-      │  Nosql database│       │     Cache      │       │ File Storage   │
-      └────────────────┘       └────────────────┘       └────────────────┘
-                                                              │
-                                                              ▼
-                                                   Store Source Code
-                                                   Store Test Cases
-                                                   Store Logs
-
-                                          │
-                                          ▼
-                                ┌───────────────────┐
-                                │   Apache Kafka    │
-                                │ submission-jobs   │
-                                └─────────┬─────────┘
-                                          │
-                                          ▼
-                                ┌───────────────────┐
-                                │ Evaluation Worker │
-                                │ Kafka Consumers   │
-                                └─────────┬─────────┘
-                                          │
-                                          ▼
-                                ┌───────────────────┐
-                                │ Docker Sandbox    │
-                                │ Secure Execution  │
-                                └───────────────────┘
+    FE --> BE
+    BE --> MDB
+    BE --> RD
+    BE --> MN
+    BE --> KF
+    KF --> EW
+    EW --> MN
+    EW --> DS
+    DS --> MDB
 ```
 
 ---
 
 ## 3. Core Components
 
-### Frontend
+### 3.1 Frontend
 
 Responsible for:
 
-* User registration/login
-* Problem listing
-* Code editor
-* Submission history
-* Leaderboard
-* Contest participation
+- User registration and login
+- Problem listing and browsing
+- In-browser code editor
+- Submission history
+- Leaderboard display
+- Contest participation
 
-Tech:
-
-* React.js
-* Monaco Editor
+**Tech Stack:** React.js, Monaco Editor
 
 ---
 
-### Backend Service
+### 3.2 Backend Service
 
 Handles:
 
-* Authentication
-* API routing
-* Submission processing
-* JWT validation
-* Problem APIs
-* Contest APIs
+- Authentication and JWT validation
+- API routing
+- Submission processing
+- Problem APIs
+- Contest APIs
 
-Tech:
-
-* Node.js
-* Express.js
+**Tech Stack:** Node.js, Express.js
 
 ---
 
-### PostgreSQL
+### 3.3 MongoDB
 
-Stores relational data:
+Stores all application data as documents:
 
-* Users
-* Problems
-* Contests
-* Submissions
-* Verdicts
-* Leaderboards
+- Users
+- Problems
+- Contests
+- Submissions
+- Verdicts
+- Leaderboards
 
 ---
 
-### Redis
+### 3.4 Redis
 
 Used for caching:
 
-* User sessions
-* Leaderboards
-* Frequently accessed problems
-* Recent submissions
+- User sessions
+- Leaderboards
+- Frequently accessed problems
+- Recent submissions
 
 ---
 
-### MinIO
+### 3.5 MinIO
 
 Object storage service used for:
 
-* Source code files
-* Test case files
-* Execution logs
-* Problem assets
+- Source code files
+- Test case files
+- Execution logs
+- Problem assets (images, PDFs)
 
-Buckets:
-
-* submissions
-* testcases
-* logs
-* problem-assets
-
----
-
-### Kafka
-
-Acts as asynchronous message queue.
-
-Topic:
-
-* submission-jobs
-
-Benefits:
-
-* Handles traffic spikes
-* Decouples API and evaluation
-* Improves scalability
+| Bucket           | Purpose              |
+|------------------|----------------------|
+| `submissions`    | User source code     |
+| `testcases`      | Input/output files   |
+| `logs`           | Execution logs       |
+| `problem-assets` | Images and PDFs      |
 
 ---
 
-### Evaluation Worker
+### 3.6 Apache Kafka
 
-Consumes Kafka jobs and:
+Acts as the asynchronous message queue.
 
-* Downloads source code
-* Downloads test cases
-* Starts Docker containers
-* Executes code
-* Generates verdicts
+- **Topic:** `submission-jobs`
+
+**Benefits:**
+- Handles traffic spikes gracefully
+- Decouples API layer from evaluation
+- Improves horizontal scalability
 
 ---
 
-### Docker Sandbox
+### 3.7 Evaluation Worker
 
-Secure execution environment.
+Consumes jobs from Kafka and:
 
-Features:
+- Downloads source code from MinIO
+- Downloads test cases from MinIO
+- Starts isolated Docker containers
+- Executes code per test case
+- Generates and writes verdicts
 
-* CPU limits
-* Memory limits
-* Read-only filesystem
-* No network access
-* Non-root execution
+---
+
+### 3.8 Docker Sandbox
+
+Secure, isolated execution environment.
+
+| Constraint   | Value       |
+|--------------|-------------|
+| CPU Limit    | 1 vCPU      |
+| Memory Limit | 256 MB      |
+| Network      | Disabled    |
+| Filesystem   | Read-only   |
+| User         | Non-root    |
 
 ---
 
 ## 4. Authentication Flow
 
-```text
-User
- │
- ▼
-Register/Login
- │
- ▼
-Backend Service
- │
- ├── Validate Credentials
- ├── Store User in PostgreSQL
- └── Generate JWT Token
-            │
-            ▼
-      Return JWT
-            │
-            ▼
- Store Token in Client
+```mermaid
+flowchart TD
+    U["User"]
+    BE["Backend Service"]
+    MDB[("MongoDB")]
+    JWT["JWT Token"]
+    CL["Client Storage\nlocalStorage / cookie"]
+
+    U -->|"Register / Login"| BE
+    BE -->|"Store user"| MDB
+    BE -->|"Generate"| JWT
+    JWT -->|"Return to client"| CL
 ```
 
-JWT contains:
-
-* userId
-* expiry time
+**JWT Payload:**
+- `userId`
+- `expiry` (TTL)
 
 ---
 
 ## 5. Submission Flow
 
-```text
-User
- │
- ▼
-Select Problem
- │
- ▼
-Write Code
- │
- ▼
-Submit Solution
- │
- ▼
-Backend API
- │
- ├── Store metadata in PostgreSQL
- ├── Upload source file to MinIO
- └── Push job to Kafka
-                │
-                ▼
-         Evaluation Worker
-                │
-                ├── Fetch source file
-                ├── Fetch test cases
-                ├── Start Docker container
-                ├── Compile code
-                ├── Execute code
-                └── Generate verdict
-                           │
-                           ▼
-              Update PostgreSQL
-                           │
-                           ▼
-                Upload logs to MinIO
-                           │
-                           ▼
-                    Return Result
+```mermaid
+flowchart TD
+    U["User"]
+    BE["Backend API"]
+    MDB[("MongoDB")]
+    MN[("MinIO")]
+    KF["Kafka\nsubmission-jobs"]
+    EW["Evaluation Worker"]
+    DC["Docker Container"]
+
+    U -->|"Select problem, write code, submit"| BE
+    BE -->|"Store metadata"| MDB
+    BE -->|"Upload source file"| MN
+    BE -->|"Push job"| KF
+    KF -->|"Consume job"| EW
+    EW -->|"Fetch source & test cases"| MN
+    EW -->|"Spawn container"| DC
+    DC -->|"Compile & execute"| DC
+    DC -->|"Write verdict"| MDB
+    DC -->|"Upload logs"| MN
+    MDB -->|"Return result"| U
 ```
 
 ---
 
-## 6. Database Design
+## 6. Database Schema
 
-### users
+### `users`
 
-| Column     | Type      |
-| ---------- | --------- |
-| id         | UUID      |
-| username   | VARCHAR   |
-| email      | VARCHAR   |
-| password   | TEXT      |
-| created_at | TIMESTAMP |
-
----
-
-### problems
-
-| Column          | Type    |
-| --------------- | ------- |
-| id              | UUID    |
-| title           | VARCHAR |
-| statement       | TEXT    |
-| difficulty      | VARCHAR |
-| time_limit_ms   | INTEGER |
-| memory_limit_mb | INTEGER |
+| Column       | Type        | Notes                   |
+|--------------|-------------|-------------------------|
+| `id`         | UUID        | Primary key             |
+| `username`   | VARCHAR     | Unique                  |
+| `email`      | VARCHAR     | Unique                  |
+| `password`   | TEXT        | Bcrypt hashed           |
+| `created_at` | TIMESTAMP   | Auto-generated          |
 
 ---
 
-### submissions
+### `problems`
 
-| Column         | Type      |
-| -------------- | --------- |
-| id             | UUID      |
-| user_id        | UUID      |
-| problem_id     | UUID      |
-| language       | VARCHAR   |
-| verdict        | VARCHAR   |
-| execution_ms   | INTEGER   |
-| memory_used_mb | INTEGER   |
-| created_at     | TIMESTAMP |
+| Column            | Type      | Notes                       |
+|-------------------|-----------|-----------------------------|
+| `id`              | UUID      | Primary key                 |
+| `title`           | VARCHAR   |                             |
+| `statement`       | TEXT      | Problem description         |
+| `difficulty`      | VARCHAR   | Easy / Medium / Hard        |
+| `time_limit_ms`   | INTEGER   | Execution time limit        |
+| `memory_limit_mb` | INTEGER   | Execution memory limit      |
 
 ---
 
-## 7. MinIO Storage Design
+### `submissions`
 
-| Bucket         | Purpose            |
-| -------------- | ------------------ |
-| submissions    | User source code   |
-| testcases      | Input/output files |
-| logs           | Execution logs     |
-| problem-assets | Images/PDFs        |
-
----
-
-## 8. Docker Sandbox Constraints
-
-| Constraint   | Value     |
-| ------------ | --------- |
-| CPU Limit    | 1 vCPU    |
-| Memory Limit | 256 MB    |
-| Network      | Disabled  |
-| Filesystem   | Read-only |
-| User         | Non-root  |
+| Column           | Type      | Notes                         |
+|------------------|-----------|-------------------------------|
+| `id`             | UUID      | Primary key                   |
+| `user_id`        | UUID      | FK → `users.id`               |
+| `problem_id`     | UUID      | FK → `problems.id`            |
+| `language`       | VARCHAR   | e.g., C++, Python, Java       |
+| `verdict`        | VARCHAR   | AC, WA, TLE, etc.             |
+| `execution_ms`   | INTEGER   | Actual execution time         |
+| `memory_used_mb` | INTEGER   | Actual memory used            |
+| `created_at`     | TIMESTAMP | Submission timestamp          |
 
 ---
 
-## 9. Verdict Types
+## 7. Verdict Reference
 
-| Verdict | Description           |
-| ------- | --------------------- |
-| AC      | Accepted              |
-| WA      | Wrong Answer          |
-| TLE     | Time Limit Exceeded   |
-| MLE     | Memory Limit Exceeded |
-| RE      | Runtime Error         |
-| CE      | Compilation Error     |
-
----
-
-## 10. Scalability
-
-### Horizontal Scaling
-
-Evaluation workers can scale independently.
-
-### Kafka Queue
-
-Buffers high submission traffic during contests.
-
-### Redis Cache
-
-Reduces database load.
-
-### Stateless APIs
-
-Enables easy backend scaling.
+| Verdict | Full Form               | Description                                      |
+|---------|-------------------------|--------------------------------------------------|
+| `AC`    | Accepted                | All test cases passed                            |
+| `WA`    | Wrong Answer            | Output doesn't match expected                    |
+| `TLE`   | Time Limit Exceeded     | Execution exceeded allowed time                  |
+| `MLE`   | Memory Limit Exceeded   | Memory usage exceeded allowed limit              |
+| `RE`    | Runtime Error           | Program crashed during execution                 |
+| `CE`    | Compilation Error       | Code failed to compile                           |
 
 ---
 
-## 11. Security
+## 8. Scalability Design
 
-### Authentication
-
-* JWT-based authentication
-
-### Sandbox Isolation
-
-* Docker containers per submission
-
-### File Security
-
-* Files stored in MinIO
-* Presigned URLs
-
-### Network Isolation
-
-* No outbound internet inside containers
+| Strategy              | Approach                                                      |
+|-----------------------|---------------------------------------------------------------|
+| Horizontal Scaling    | Evaluation workers scale independently via Kafka consumers    |
+| Traffic Buffering     | Kafka queues absorb submission bursts during contests         |
+| Cache Layer           | Redis reduces database read load on hot data                  |
+| Stateless API         | Enables easy backend horizontal scaling behind a load balancer|
 
 ---
 
-## 12. Non-Functional Requirements
+## 9. Security Design
 
-| Requirement        | Target  |
-| ------------------ | ------- |
-| Concurrent Users   | 1000+   |
-| Evaluation Latency | < 5s    |
-| API Response Time  | < 200ms |
-| Availability       | 99.9%   |
-
----
-
-## 13. Future Enhancements
-
-* Kubernetes deployment
-* Auto-scaling workers
-* WebSocket live verdicts
-* Plagiarism detection
-* Distributed MinIO storage
-* Multi-region deployment
+| Layer             | Mechanism                                         |
+|-------------------|---------------------------------------------------|
+| Authentication    | JWT-based, short-lived tokens                     |
+| Sandbox Isolation | Isolated Docker container per submission           |
+| File Access       | Files stored in MinIO, accessed via presigned URLs |
+| Network Isolation | No outbound internet access inside containers      |
+| User Isolation    | Containers run as non-root user                   |
 
 ---
 
-## 14. Technology Stack
+## 10. Non-Functional Requirements
 
-| Requirement            | Target  |
-| ---------------------- | ------- |
-| Concurrent Submissions | 1000+   |
-| Evaluation Latency     | < 5s    |
-| API Response Time      | < 200ms |
-| Availability           | 99.9%   |
-
----
-
-# Project Goals
-
-* Scalable architecture
-* Secure execution environment
-* Fast verdict generation
-* High availability
-* Contest-ready infrastructure
+| Requirement         | Target    |
+|---------------------|-----------|
+| Concurrent Users    | 1,000+    |
+| Evaluation Latency  | < 5s      |
+| API Response Time   | < 200ms   |
+| Availability        | 99.9%     |
 
 ---
 
-# License
+## 11. Technology Stack
 
-This project is for educational and learning purposes.
+| Layer              | Technology                  |
+|--------------------|-----------------------------|
+| Frontend           | React.js, Monaco Editor     |
+| Backend API        | Node.js, Express.js         |
+| Relational DB      | PostgreSQL                  |
+| Cache              | Redis                       |
+| Object Storage     | MinIO                       |
+| Message Queue      | Apache Kafka                |
+| Code Execution     | Docker (sandboxed)          |
 
 ---
 
-# Author
+## 12. Future Enhancements
 
-Platform Engineering Team
+- [ ] Kubernetes deployment with auto-scaling workers
+- [ ] WebSocket-based live verdict streaming
+- [ ] Plagiarism detection engine
+- [ ] Distributed MinIO for high availability storage
+- [ ] Multi-region deployment
+- [ ] Support for more programming languages
+- [ ] Editorial and solution discussion sections
+
+---
+
+## 13. Project Goals
+
+| Goal                         | Detail                                        |
+|------------------------------|-----------------------------------------------|
+| Scalable Architecture        | Kafka + stateless workers + Redis caching      |
+| Secure Execution             | Isolated Docker sandbox with strict limits     |
+| Fast Verdict Generation      | Target < 5s end-to-end evaluation             |
+| High Availability            | 99.9% uptime SLA                              |
+| Contest-Ready Infrastructure | Handles 1000+ concurrent submissions          |
+
+---
+
+*This document is for educational and learning purposes.*  
+*Author: Platform Engineering Team*
