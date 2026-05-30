@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const AuthUser = require("../models/authUser");
+const AuthUser = require("../model/AuthUser");
 
 const getUser = async(email) => { 
     const user = await AuthUser.findOne({email: email.toLowerCase()})
@@ -11,7 +11,7 @@ const getUser = async(email) => {
 }
 
 const hashPassword = async(password) => {
-    saltRounds = 10;
+    const saltRounds = 10;
     return bcrypt.hash(password, saltRounds);
 }
  
@@ -32,8 +32,12 @@ const generateToken = async(payload) => {
     )
 }
 
-const generateRefreshToken = async() => {
-
+const generateRefreshToken = async(payload) => {
+    return jwt.sign(
+        payload,
+        process.env.JWT_SECRET,
+        {expiresIn: "7d"}
+    )
 }
 
 module.exports = {

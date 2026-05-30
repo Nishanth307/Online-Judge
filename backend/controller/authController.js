@@ -1,27 +1,23 @@
-const AuthUser = require("..models/authUser");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const AuthUser = require("../model/AuthUser");
 const AuthUtil = require("../utils/authUtil");
 
- /**
+/**
  * Register a new user
- * @route POST /register
+ * @route POST /api/auth/register
  */
-
 const registerUser = async (req, res) => {
     try {
-        //get payload validate and store in mongo
         const {firstName, lastName, email, password} = req.body;
 
         if(!(firstName && lastName && email && password)){
             return res.status(400).json({
                 success: false,
-                message: "All fields required"
-            })
+                message: "All fields are required"
+            });
         }
 
         // existing user check
-        userData = await AuthUtil.getUser(email);
+        const userData = await AuthUtil.getUser(email);
         if (userData.success){
             return res.status(400).json({
                 success: false,
@@ -30,7 +26,7 @@ const registerUser = async (req, res) => {
         }
 
         // Hashed Password
-        hashedPassword = AuthUtil.hashPassword(password);
+        const hashedPassword = await AuthUtil.hashPassword(password);
 
         // create new user
         const user = await AuthUser.create({
@@ -41,45 +37,43 @@ const registerUser = async (req, res) => {
         });
 
         // generate tokens 
-        const accessToken = AuthUtil.generateToken({
-            _id: user.id,
+        const accessToken = await AuthUtil.generateToken({
+            _id: user._id,
             email: user.email
-        })
-
-        // store refresh token in redis 
-        const refreshToken = AuthUtil.generateRefreshToken({
-            _id: user.id,
-            email: user.email
-        })
+        });
 
         const userResponse = {
-            _id: user.id,
+            _id: user._id,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
-            createdAt: user.createdAt,
-        }
+        };
 
-        // set http only cookie 
+        // Set HttpOnly cookie for the authentication token
+        res.cookie("token", accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
         res.status(201).json({
             success: true,
-            message: "User registered Successfully",
+            message: "User registered successfully",
             user: userResponse,
             token: accessToken
-        })
-        // send back response
+        });
     } 
-
     catch(error){
         console.error("Registration error", error);
-        if (error.name == 'ValidationError'){
+        if (error.name === 'ValidationError'){
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.status(400).json({
                 success: false,
                 message: "Validation failed",
                 errors: validationErrors
             });
-        }else if (error.code === 11000){
+        } else if (error.code === 11000){
             return res.status(409).json({
                 success: false,
                 message: "User with this email already exists"
@@ -91,33 +85,101 @@ const registerUser = async (req, res) => {
             });
         }
     }
+}; 
 
- }; 
-
- const loginUser = async (req,res) => {
+/**
+ * Login a user
+ * @route POST /api/auth/login
+ */
+const loginUser = async (req, res) => {
     try {
+        const { email, password } = req.body;
 
+        if (!(email && password)) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and password are required"
+            });
+        }
+
+        const userData = await AuthUtil.getUser(email);
+        if (!userData.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email or password"
+            });
+        }
+
+        const user = userData.user;
+        const isPasswordValid = await AuthUtil.validatePassword(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid email or password"
+            });
+        }
+
+        const accessToken = await AuthUtil.generateToken({
+            _id: user._id,
+            email: user.email
+        });
+
+        const userResponse = {
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email
+        };
+
+        // Set HttpOnly cookie for the authentication token
+        res.cookie("token", accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "User logged in successfully",
+            user: userResponse,
+            token: accessToken
+        });
     }
     catch(error){
-        console.log("login error",error);
+        console.error("Login error", error);
         res.status(500).json({
             success: false,
             message: "Internal server error during login"
         });
     }
- };
+};
 
- const logoutUser = async (req,res) => {
+/**
+ * Logout a user
+ * @route POST /api/auth/logout
+ */
+const logoutUser = async (req, res) => {
     try {
+        // Clear HttpOnly cookie on logout
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax"
+        });
 
+        res.status(200).json({
+            success: true,
+            message: "User logged out successfully"
+        });
     }
     catch(error){
-        console.log("logout error",error);
+        console.error("Logout error", error);
         res.status(500).json({
             success: false,
             message: "Internal server error during logout"
         });
     }
- };
+};
 
- module.exports = {registerUser, loginUser, logoutUser};
+module.exports = { registerUser, loginUser, logoutUser };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { loginUser } from "..api/auth";
+import { loginUser } from "../api/auth.js"; 
 import { useNavigate, Link } from "react-router-dom";
 
 export default function Login() {
@@ -19,7 +19,8 @@ export default function Login() {
 
         try {
             const data = await loginUser(form.email, form.password);
-            localStorage.setItem("token", data.token);
+            // TODO(security): Token is stored securely in an HttpOnly cookie. Store only non-sensitive user info in localStorage.
+            localStorage.setItem("user", JSON.stringify(data.user));
             navigate("/dashboard");
         } catch (err) {
             setError(err.message);
