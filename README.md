@@ -184,7 +184,7 @@ flowchart TD
 
 ## 5. Submission & Verdict Flow
 
-```
+```mermaid
 flowchart TD
     U["User Submits Code"]
     FE["Frontend"]
