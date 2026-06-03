@@ -20,7 +20,7 @@ The system is designed to support:
 
 ## 2. High-Level Architecture
 
-```
+```mermaid
 flowchart TD
     FE["Frontend<br/>React + Monaco Editor"]
     BE["Backend Service<br/>Node.js · Express.js"]
@@ -162,7 +162,7 @@ Secure, isolated execution environment.
 
 ## 4. Authentication Flow
 
-```
+```mermaid
 flowchart TD
     U["User"]
     BE["Backend Service"]
