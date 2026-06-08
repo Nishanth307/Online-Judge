@@ -1,4 +1,5 @@
-const AuthUser = require("../model/AuthUser");
+const { default: settings } = require("../config/settings");
+const User = require("../model/user");
 const AuthUtil = require("../utils/authUtil");
 
 /**
@@ -7,9 +8,9 @@ const AuthUtil = require("../utils/authUtil");
  */
 const registerUser = async (req, res) => {
     try {
-        const {firstName, lastName, email, password} = req.body;
+        const { firstName, lastName, email, password } = req.body;
 
-        if(!(firstName && lastName && email && password)){
+        if (!(firstName && lastName && email && password)) {
             return res.status(400).json({
                 success: false,
                 message: "All fields are required"
@@ -17,8 +18,8 @@ const registerUser = async (req, res) => {
         }
 
         // existing user check
-        const userData = await AuthUtil.getUser(email);
-        if (userData.success){
+        const userData = await User.findOne({email:email.toLowerCase()});
+        if (userData) {
             return res.status(400).json({
                 success: false,
                 message: "User already exists"
@@ -29,7 +30,7 @@ const registerUser = async (req, res) => {
         const hashedPassword = await AuthUtil.hashPassword(password);
 
         // create new user
-        const user = await AuthUser.create({
+        const newUser = await User.create({
             firstName: firstName,
             lastName: lastName,
             email: email.toLowerCase(),
@@ -38,15 +39,15 @@ const registerUser = async (req, res) => {
 
         // generate tokens 
         const accessToken = await AuthUtil.generateToken({
-            _id: user._id,
-            email: user.email
+            _id: newUser._id,
+            email: newUser.email
         });
 
         const userResponse = {
-            _id: user._id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
+            _id: newUser._id,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            email: newUser.email,
         };
 
         // Set HttpOnly cookie for the authentication token
@@ -63,29 +64,29 @@ const registerUser = async (req, res) => {
             user: userResponse,
             token: accessToken
         });
-    } 
-    catch(error){
+    }
+    catch (error) {
         console.error("Registration error", error);
-        if (error.name === 'ValidationError'){
+        if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.status(400).json({
                 success: false,
                 message: "Validation failed",
                 errors: validationErrors
             });
-        } else if (error.code === 11000){
+        } else if (error.code === 11000) {
             return res.status(409).json({
                 success: false,
                 message: "User with this email already exists"
-            }); 
-        } else{
+            });
+        } else {
             res.status(500).json({
                 success: false,
                 message: "Internal Server error during registration"
             });
         }
     }
-}; 
+};
 
 /**
  * Login a user
@@ -102,8 +103,8 @@ const loginUser = async (req, res) => {
             });
         }
 
-        const userData = await AuthUtil.getUser(email);
-        if (!userData.success) {
+        const userData = await User.findOne({email: email.toLowerCase()})
+        if (!userData) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email or password"
@@ -134,7 +135,7 @@ const loginUser = async (req, res) => {
         // Set HttpOnly cookie for the authentication token
         res.cookie("token", accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: settings.NODE_ENV === "production",
             sameSite: "lax",
             maxAge: 24 * 60 * 60 * 1000 // 24 hours
         });
@@ -146,7 +147,7 @@ const loginUser = async (req, res) => {
             token: accessToken
         });
     }
-    catch(error){
+    catch (error) {
         console.error("Login error", error);
         res.status(500).json({
             success: false,
@@ -164,7 +165,7 @@ const logoutUser = async (req, res) => {
         // Clear HttpOnly cookie on logout
         res.clearCookie("token", {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: settings.NODE_ENV === "production",
             sameSite: "lax"
         });
 
@@ -173,7 +174,7 @@ const logoutUser = async (req, res) => {
             message: "User logged out successfully"
         });
     }
-    catch(error){
+    catch (error) {
         console.error("Logout error", error);
         res.status(500).json({
             success: false,

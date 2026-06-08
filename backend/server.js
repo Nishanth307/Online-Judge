@@ -1,47 +1,35 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-const dotenv = require("dotenv");
-const DBConnection = require("./database/mongo_connection/db");
-const authRoutes = require("./routes/authRoutes");
+const settings = require("./config/settings");
+const DBConnection = require("./config/db");
+const userRoute = require("./routes/userRoute");
 
 // Load environment variables from the root folder
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 
 const app = express();
 
 // Establish database connection
 DBConnection();
 
+
 // Configure CORS to allow secure HttpOnly cookies across origins
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: settings.BASE_URL,
     credentials: true
 }));
 
 app.use(express.json());
 
-// Zero-dependency cookie-parsing middleware to support HttpOnly cookies without extra npm packages
-app.use((req, res, next) => {
-    const rawCookies = req.headers.cookie || "";
-    req.cookies = {};
-    rawCookies.split(";").forEach(cookie => {
-        const parts = cookie.split("=");
-        if (parts.length === 2) {
-            req.cookies[parts[0].trim()] = parts[1].trim();
-        }
-    });
-    next();
-});
-
-app.use("/api/auth", authRoutes);
-
 app.get("/", (req, res) => {
-    res.send("Backend is running");
+    res.status(200).json({
+        message: "online judge is running",
+        status: "healthy",
+        timestamp: new Date().toISOString()
+    });
 });
+app.use("/api/users", userRoute);
 
-const PORT = process.env.BACKEND_PORT || process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(settings.BACKEND_PORT, () => {
+    console.log(`${settings.APP_NAME} server is running on port ${settings.BACKEND_PORT}`);
 });
