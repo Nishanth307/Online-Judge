@@ -1,5 +1,7 @@
-const BASE = "http://localhost:5000/api/auth";
+import axios from "axios";
+import settings from "../config/settings";
 
+const BASE = `${settings.BASE_URL}/api/auth`;
 export const loginUser = async(email,password) => {
     const res = await fetch(`${BASE}/login`,{
         method: "POST",
