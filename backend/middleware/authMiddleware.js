@@ -3,7 +3,14 @@ const settings = require('../config/settings');
 
 const authMiddleware = async (req, res, next) => {
     try {
-        const token = req.headers.authorization.split(" ")[1];
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({
+                success: false,
+                message: "Authorization header missing"
+            });
+        }
+        const token = authHeader.split(" ")[1];
         if (!token) {
             return res.status(401).json({
                 success: false,
@@ -11,7 +18,7 @@ const authMiddleware = async (req, res, next) => {
             });
         }
         const decodedToken = jwt.verify(token, settings.JWT_SECRET);
-        req.userId = decodedToken.userId;
+        req.userId = decodedToken._id;
         next();
     }
     catch (error) {

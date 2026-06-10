@@ -1,31 +1,31 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { registerUser } from "../api/auth.js";
+import { registerUser } from "../api/userApi.js";
 
-export default function Register(){
+export default function Register() {
     const navigate = useNavigate();
     const [form, setForm] = useState({
-        firstName: "", lastName: "", email: "", password: "",confirm: "",
+        firstName: "", lastName: "", email: "", password: "", confirm: "",
     });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
-        setForm({...form, [e.target.name]: e.target.value});
+        setForm({ ...form, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = async (e ) =>{
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
 
-        if (form.password !==form.confirm){
+        if (form.password !== form.confirm) {
             return setError("passwords do not match.");
         }
         setLoading(true);
         try {
-            await registerUser(form.firstName,form.lastName,form.email,form.password);
+            await registerUser(form.firstName, form.lastName, form.email, form.password);
             navigate("/login");
-        } catch(err){
+        } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
@@ -37,45 +37,45 @@ export default function Register(){
             <h2>create Account</h2>
             <form onSubmit={handleSubmit}>
                 <input
-                name = "firstName" 
-                placeholder = "First Name"
-                value = {form.firstName}
-                onChange={handleChange}
-                required
+                    name="firstName"
+                    placeholder="First Name"
+                    value={form.firstName}
+                    onChange={handleChange}
+                    required
                 />
 
                 <input
-                name = "lastName"
-                placeholder="Last Name"
-                value={form.lastName}
-                onChange={handleChange}
+                    name="lastName"
+                    placeholder="Last Name"
+                    value={form.lastName}
+                    onChange={handleChange}
                 />
 
                 <input
-                name="email"
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={handleChange}
-                required
+                    name="email"
+                    type="email"
+                    placeholder="Email"
+                    value={form.email}
+                    onChange={handleChange}
+                    required
                 />
 
                 <input
-                name="password"
-                placeholder="Password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                type="password"
+                    name="password"
+                    placeholder="Password"
+                    value={form.password}
+                    onChange={handleChange}
+                    required
+                    type="password"
                 />
 
                 <input
-                name="confirm"
-                placeholder="Confirm Password"
-                value={form.confirm}
-                onChange={handleChange}
-                required
-                type="password"
+                    name="confirm"
+                    placeholder="Confirm Password"
+                    value={form.confirm}
+                    onChange={handleChange}
+                    required
+                    type="password"
                 />
 
                 {error && <p className="error">{error}</p>}
@@ -83,7 +83,7 @@ export default function Register(){
                     {loading ? "Creating..." : "Create Account"}
                 </button>
             </form>
-            <p>Already have account? <Link to = "/login">Login here</Link></p>
+            <p>Already have account? <Link to="/login">Login here</Link></p>
         </div>
     )
 }

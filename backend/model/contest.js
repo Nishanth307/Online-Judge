@@ -1,4 +1,4 @@
-const { default: mongoose } = require("mongoose")
+const mongoose = require("mongoose");
 
 const contestSchema = new mongoose.Schema({
     title: { type: String, required: [true, "Title is required"], trim: true, unique: true },

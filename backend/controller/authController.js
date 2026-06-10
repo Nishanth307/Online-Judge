@@ -1,4 +1,4 @@
-const { default: settings } = require("../config/settings");
+const settings = require("../config/settings");
 const User = require("../model/user");
 const AuthUtil = require("../utils/authUtil");
 
@@ -18,7 +18,7 @@ const registerUser = async (req, res) => {
         }
 
         // existing user check
-        const userData = await User.findOne({email:email.toLowerCase()});
+        const userData = await User.findOne({ email: email.toLowerCase() });
         if (userData) {
             return res.status(400).json({
                 success: false,
@@ -103,7 +103,7 @@ const loginUser = async (req, res) => {
             });
         }
 
-        const userData = await User.findOne({email: email.toLowerCase()})
+        const userData = await User.findOne({ email: email.toLowerCase() })
         if (!userData) {
             return res.status(400).json({
                 success: false,
@@ -111,7 +111,7 @@ const loginUser = async (req, res) => {
             });
         }
 
-        const user = userData.user;
+        const user = userData;
         const isPasswordValid = await AuthUtil.validatePassword(password, user.password);
         if (!isPasswordValid) {
             return res.status(400).json({
