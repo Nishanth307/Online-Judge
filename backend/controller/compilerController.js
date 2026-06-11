@@ -8,6 +8,7 @@ const CompilerFactoryProvider = require("../services/compiler/CompileFactory/com
 
 
 const compileCode = async (req, res) => {
+    let filePath;
     try {
         const { language, code, input } = req.body;
         if (!language || !code) {
@@ -16,13 +17,9 @@ const compileCode = async (req, res) => {
                 message: "Language and code are required"
             });
         }
+        filePath = await generateFile(language, code);
         const factory = CompilerFactoryProvider.getFactory(language);
-        const runner = factory.execute();
-        const filePath = await runner.execute(language, code);
-        const output = await runner.execute(
-            filePath,
-            input
-        );
+        const output = await factory.execute(filePath, input);
         return res.status(200).json({
             success: true,
             output

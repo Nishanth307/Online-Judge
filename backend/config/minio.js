@@ -11,6 +11,11 @@ const minioClient = new Minio.Client({
 
 async function testMinio() {
     try {
+        const bucketExists = await minioClient.bucketExists(settings.MINIO_BUCKET);
+        if (!bucketExists) {
+            await minioClient.makeBucket(settings.MINIO_BUCKET, "");
+            console.log(`MinIO bucket "${settings.MINIO_BUCKET}" created successfully`);
+        }
         const presignedUrl = await minioClient.presignedUrl("GET", settings.MINIO_BUCKET, "test.txt");
         console.log("Test URL:", presignedUrl);
     } catch (error) {

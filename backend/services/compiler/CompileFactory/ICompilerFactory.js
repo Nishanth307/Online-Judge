@@ -11,4 +11,4 @@ class ICompilerFactory {
 
 
 
-module.exports = CompilerFactory;
+module.exports = ICompilerFactory;

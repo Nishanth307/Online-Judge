@@ -9,17 +9,10 @@ const submissionRoute = require("./routes/submissionRoutes");
 const testCaseRoute = require("./routes/testCaseRoutes");
 const compilerRoute = require("./routes/compilerRoutes");
 const errorHandler = require("./middleware/errorHandler");
-
-// Load environment variables from the root folder
-
+const { connectProducer } = require("./services/kafka/producer");
 
 const app = express();
 
-// Establish database connection
-DBConnection();
-
-
-// Configure CORS to allow secure HttpOnly cookies across origins
 app.use(cors({
     origin: settings.BASE_URL,
     credentials: true
@@ -44,6 +37,24 @@ app.use("/api/compiler", compilerRoute);
 
 app.use(errorHandler);
 
-app.listen(settings.BACKEND_PORT, () => {
-    console.log(`${settings.APP_NAME} server is running on port ${settings.BACKEND_PORT}`);
-});
+const startServer = async () => {
+    try {
+        //mongo db connection
+        await DBConnection();
+        // kafka producer connection
+        await connectProducer();
+
+        console.log("MongoDB Connected");
+        console.log("Kafka Producer Connected");
+
+        //express server start
+        app.listen(settings.BACKEND_PORT, () => {
+            console.log(`${settings.APP_NAME} server is running on port ${settings.BACKEND_PORT}`);
+        });
+    } catch (err) {
+        console.log("Failed to start:", err);
+        process.exit(1);
+    }
+}
+
+startServer();
