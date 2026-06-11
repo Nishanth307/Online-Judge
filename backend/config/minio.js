@@ -11,7 +11,7 @@ const minioClient = new Minio.Client({
 
 async function testMinio() {
     try {
-        const presignedUrl = minioClient.presignedUrl("GET", settings.MINIO_BUCKET, "test.txt");
+        const presignedUrl = await minioClient.presignedUrl("GET", settings.MINIO_BUCKET, "test.txt");
         console.log("Test URL:", presignedUrl);
     } catch (error) {
         console.error("MinIO connection error:", error);

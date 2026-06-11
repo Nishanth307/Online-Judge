@@ -1,17 +1,24 @@
+const cleanupFile = require("../services/compiler/cleanupFile");
 const generateFile = require("../services/compiler/generateFile");
-const CompilerFactory = require("../services/compiler/CompileFactory/CompilerFactory");
+const CompilerFactory = require("../services/compiler/CompileFactory/ICompilerFactory");
+const PythonCompilerFactory = require("../services/compiler/CompileFactory/PythonFatcory");
+const CppCompilerFactory = require("../services/compiler/CompileFactory/CppFactory");
+const CompilerFactoryProvider = require("../services/compiler/CompileFactory/compileFactoryProvide");
+
+
 
 const compileCode = async (req, res) => {
     try {
         const { language, code, input } = req.body;
-        if (!language || !code){
+        if (!language || !code) {
             return res.status(400).json({
                 success: false,
                 message: "Language and code are required"
             });
         }
-        const filePath = await generateFile(language, code);
-        const runner = CompilerFactory.getRunner(language);
+        const factory = CompilerFactoryProvider.getFactory(language);
+        const runner = factory.execute();
+        const filePath = await runner.execute(language, code);
         const output = await runner.execute(
             filePath,
             input
@@ -25,7 +32,11 @@ const compileCode = async (req, res) => {
             success: false,
             message: error.message
         });
+    } finally {
+        if (filePath) {
+            await cleanupFile(filePath);
+        }
     }
-}
+};
 
-module.exports = { compileCode }
+module.exports = { compileCode };

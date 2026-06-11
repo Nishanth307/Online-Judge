@@ -1,6 +1,7 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const minioClient = require("../config/minio");
 const settings = require("../config/settings");
+const TestCase = require("../model/testCase");
 
 exports.uploadTestCase = asyncHandler(async (req, res) => {
     const { problemId } = req.params;
